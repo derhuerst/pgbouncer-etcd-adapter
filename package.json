@@ -1,0 +1,43 @@
+{
+	"name": "pgbouncer-etcd-adapter",
+	"description": "Dynamically configure pgbouncer using etcd.",
+	"version": "1.0.0",
+	"type": "module",
+	"bin": {
+		"configure-pgbouncer-using-etcd": "./cli.js"
+	},
+	"main": "index.js",
+	"files": [
+		"cli.js",
+		"index.js",
+		"example.js"
+	],
+	"keywords": [
+		"pgbouncer",
+		"postgres",
+		"postgresql",
+		"etcd",
+		"config"
+	],
+	"author": "Jannis R <mail@jannisr.de>",
+	"homepage": "https://github.com/derhuerst/pgbouncer-etcd-adapter",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/derhuerst/pgbouncer-etcd-adapter.git"
+	},
+	"bugs": "https://github.com/derhuerst/pgbouncer-etcd-adapter/issues",
+	"license": "ISC",
+	"engines": {
+		"node": ">=18"
+	},
+	"dependencies": {
+	},
+	"devDependencies": {
+		"eslint": "^8.0.0"
+	},
+	"scripts": {
+		"test": "env NODE_ENV=dev node --test",
+		"lint": "eslint .",
+		"prepublishOnly": "npm run lint && npm test"
+	}
+}
