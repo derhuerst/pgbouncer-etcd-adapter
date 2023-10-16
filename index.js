@@ -24,9 +24,15 @@ const writeFileAndLog = async (writeFile, file, data) => {
 const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	opt = {
 		writeAtomically: true,
+		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
+		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
 		...opt,
 	}
 	debug('options', opt)
+	const {
+		pathToPgbouncerIni,
+		pathToUserlistTxt,
+	} = opt
 
 	const etcd = await connectToEtcd()
 
@@ -39,8 +45,8 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 
 		const _write = opt.writeAtomically ? writeAtomically : fsWriteFile
 		await Promise.all([
-			writeFileAndLog(_write, LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini', pgbouncerIni),
-			writeFileAndLog(_write, LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt', userlistTxt),
+			writeFileAndLog(_write, pathToPgbouncerIni, pgbouncerIni),
+			writeFileAndLog(_write, pathToUserlistTxt, userlistTxt),
 		])
 	}
 
