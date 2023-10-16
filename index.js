@@ -23,6 +23,7 @@ const writeFileAndLog = async (writeFile, file, data) => {
 
 const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	opt = {
+		etcdPrefix: 'pgbouncer.',
 		writeAtomically: true,
 		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
 		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
@@ -30,11 +31,13 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	}
 	debug('options', opt)
 	const {
+		etcdPrefix,
 		pathToPgbouncerIni,
 		pathToUserlistTxt,
 	} = opt
 
-	const etcd = await connectToEtcd()
+	const _etcd = await connectToEtcd()
+	const etcd = _etcd.namespace(etcdPrefix)
 
 	const generateConfig = async () => {
 		debug('regenerating config')

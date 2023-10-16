@@ -20,6 +20,10 @@ const {
 			type: 'boolean',
 			short: 'v',
 		},
+		'etcd-prefix': {
+			type: 'string',
+			short: 'p',
+		},
 		'no-atomic-writes': {
 			type: 'boolean',
 		},
@@ -39,6 +43,8 @@ if (flags.help) {
 Usage:
     configure-pgbouncer-using-etcd
 Options:
+    -p  --etcd-prefix               Key prefix in etcd to query/watch.
+                                      Default: pgbouncer.
     -c  --path-to-pgbouncer-ini     Where pgbouncer's pgbouncer.ini shall be written to.
                                       Default: $PWD/pgbouncer.ini
     -u  --path-to-userlist-txt      Where pgbouncer's userlist.txt shall be written to.
@@ -63,6 +69,10 @@ if (flags.version) {
 import {generatePgbouncerConfigFromEtc} from './index.js'
 
 const opt = {}
+
+if ('etcd-prefix' in flags) {
+	opt.etcdPrefix = flags['etcd-prefix']
+}
 
 if ('no-atomic-writes' in flags) {
 	opt.writeAtomically = !flags['no-atomic-writes']

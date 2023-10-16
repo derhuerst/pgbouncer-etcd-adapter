@@ -22,6 +22,8 @@ npm install -g pgbouncer-etcd-adapter
 Usage:
     configure-pgbouncer-using-etcd
 Options:
+    -p  --etcd-prefix               Key prefix in etcd to query/watch.
+                                      Default: pgbouncer.
     -c  --path-to-pgbouncer-ini     Where pgbouncer's pgbouncer.ini shall be written to.
                                       Default: $PWD/pgbouncer.ini
     -u  --path-to-userlist-txt      Where pgbouncer's userlist.txt shall be written to.
