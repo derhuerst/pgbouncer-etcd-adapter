@@ -20,6 +20,9 @@ const {
 			type: 'boolean',
 			short: 'v',
 		},
+		'no-atomic-writes': {
+			type: 'boolean',
+		},
 	},
 })
 
@@ -27,8 +30,14 @@ if (flags.help) {
 	process.stdout.write(`
 Usage:
     configure-pgbouncer-using-etcd
+Options:
+        --no-atomic-writes          Instead of writing atomically by
+                                       1) writing into a temporary file and
+                                       2) moving this temp file to the target path,
+                                      *do not* write atomically.
+                                      Default: false
 Examples:
-    configure-pgbouncer-using-etcd
+    configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
 \n`)
 	process.exit(0)
 }
@@ -40,4 +49,10 @@ if (flags.version) {
 
 import {generatePgbouncerConfigFromEtc} from './index.js'
 
-await generatePgbouncerConfigFromEtc()
+const opt = {}
+
+if ('no-atomic-writes' in flags) {
+	opt.writeAtomically = !flags['no-atomic-writes']
+}
+
+await generatePgbouncerConfigFromEtc(opt)

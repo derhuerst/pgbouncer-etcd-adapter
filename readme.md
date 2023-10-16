@@ -21,8 +21,14 @@ npm install -g pgbouncer-etcd-adapter
 ```
 Usage:
     configure-pgbouncer-using-etcd
+Options:
+        --no-atomic-writes          Instead of writing atomically by
+                                       1) writing into a temporary file and
+                                       2) moving this temp file to the target path,
+                                      *do not* write atomically.
+                                      Default: false
 Examples:
-    configure-pgbouncer-using-etcd
+    configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
 ```
 
 

@@ -33,7 +33,8 @@
 	"dependencies": {
 		"debug": "^4.3.4",
 		"etcd3": "^1.1.2",
-		"ini": "^4.1.1"
+		"ini": "^4.1.1",
+		"write-file-atomic": "^5.0.1"
 	},
 	"devDependencies": {
 		"eslint": "^8.0.0"

@@ -1,5 +1,6 @@
 import createDebug from 'debug'
-import {writeFile} from 'node:fs/promises'
+import writeAtomically from 'write-file-atomic'
+import {writeFile as fsWriteFile} from 'node:fs/promises'
 import {connectToEtcd} from './lib/etcd.js'
 import {
 	mapEtcdEntriesToPgbouncerIni,
@@ -10,7 +11,7 @@ const LINUX_DEFAULT_CONFIG_BASE_DIR = '/etc/pgbouncer'
 
 const debug = createDebug('pgbouncer-etcd-adapter')
 
-const writeFileAndLog = async (file, data) => {
+const writeFileAndLog = async (writeFile, file, data) => {
 	try {
 		await writeFile(file, data)
 		debug('successfully written', file)
@@ -22,6 +23,7 @@ const writeFileAndLog = async (file, data) => {
 
 const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	opt = {
+		writeAtomically: true,
 		...opt,
 	}
 	debug('options', opt)
@@ -35,9 +37,10 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		const pgbouncerIni = mapEtcdEntriesToPgbouncerIni(etcdEntries)
 		const userlistTxt = mapEtcdEntriesToUserlistTxt(etcdEntries)
 
+		const _write = opt.writeAtomically ? writeAtomically : fsWriteFile
 		await Promise.all([
-			writeFileAndLog(LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini', pgbouncerIni),
-			writeFileAndLog(LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt', userlistTxt),
+			writeFileAndLog(_write, LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini', pgbouncerIni),
+			writeFileAndLog(_write, LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt', userlistTxt),
 		])
 	}
 
