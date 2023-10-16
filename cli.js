@@ -20,6 +20,10 @@ const {
 			type: 'boolean',
 			short: 'v',
 		},
+		watch: {
+			type: 'boolean',
+			short: 'w',
+		},
 		'etcd-prefix': {
 			type: 'string',
 			short: 'p',
@@ -47,6 +51,9 @@ if (flags.help) {
 Usage:
     configure-pgbouncer-using-etcd
 Options:
+    -w  --watch                     Watch the etcd namespace, and regenerate the pgbouncer
+                                      config as soon as any value has changed.
+                                      Default: false
     -p  --etcd-prefix               Key prefix in etcd to query/watch.
                                       Default: pgbouncer.
     -c  --path-to-pgbouncer-ini     Where pgbouncer's pgbouncer.ini shall be written to.
@@ -62,7 +69,7 @@ Options:
                                       *do not* write atomically.
                                       Default: false
 Examples:
-    configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini
+    configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
 \n`)
 	process.exit(0)
@@ -73,9 +80,26 @@ if (flags.version) {
 	process.exit(0)
 }
 
-import {generatePgbouncerConfigFromEtc} from './index.js'
+import {
+	generatePgbouncerConfigFromEtc,
+	GenerationError,
+} from './index.js'
 
-const opt = {}
+const onGenerationFailed = ({error}) => {
+	if (!flags.quiet) {
+		console.error('failed to generate pgbouncer config')
+		console.error(error)
+	}
+	process.exitCode = 1
+}
+
+const opt = {
+	onGenerationFailed,
+}
+
+if ('watch' in flags) {
+	opt.watch = flags.watch
+}
 
 if ('etcd-prefix' in flags) {
 	opt.etcdPrefix = flags['etcd-prefix']
@@ -103,4 +127,12 @@ if (!flags.quiet) {
 	}
 }
 
-await generatePgbouncerConfigFromEtc(opt)
+try {
+	await generatePgbouncerConfigFromEtc(opt)
+} catch (error) {
+	if (error instanceof GenerationError) {
+		onGenerationFailed({error})
+	} else {
+		throw error
+	}
+}

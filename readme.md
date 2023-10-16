@@ -22,6 +22,9 @@ npm install -g pgbouncer-etcd-adapter
 Usage:
     configure-pgbouncer-using-etcd
 Options:
+    -w  --watch                     Watch the etcd namespace, and regenerate the pgbouncer
+                                      config as soon as any value has changed.
+                                      Default: false
     -p  --etcd-prefix               Key prefix in etcd to query/watch.
                                       Default: pgbouncer.
     -c  --path-to-pgbouncer-ini     Where pgbouncer's pgbouncer.ini shall be written to.
@@ -37,7 +40,7 @@ Options:
                                       *do not* write atomically.
                                       Default: false
 Examples:
-    configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini
+    configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
 ```
 

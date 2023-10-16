@@ -6,10 +6,12 @@ import {
 	mapEtcdEntriesToPgbouncerIni,
 	mapEtcdEntriesToUserlistTxt,
 } from './lib/map.js'
+import {GenerationError} from './lib/generation-error.js'
 
 const LINUX_DEFAULT_CONFIG_BASE_DIR = '/etc/pgbouncer'
 
 const debug = createDebug('pgbouncer-etcd-adapter')
+const debugWatcher = createDebug('pgbouncer-etcd-adapter:watcher')
 
 const writeFileAndLog = async (writeFile, file, data) => {
 	try {
@@ -21,13 +23,31 @@ const writeFileAndLog = async (writeFile, file, data) => {
 	}
 }
 
+const defaultOnGenerationFailed = ({error}) => {
+	console.error('failed to generate pgbouncer config:', error)
+}
+const defaultOnWatcherDisconnected = () => {
+	console.warn('pgbouncer etcd watcher disconnected')
+}
+const defaultOnWatcherConnected = () => {
+	console.info('pgbouncer etcd watcher (re)connected')
+}
+const defaultOnWatcherError = ({error}) => {
+	console.error('pgbouncer etcd watcher error:', error)
+}
+
 const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	opt = {
 		etcdPrefix: 'pgbouncer.',
 		writeAtomically: true,
+		watch: false,
 		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
 		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
+		onGenerationFailed: defaultOnGenerationFailed,
 		onConfigWritten: () => {},
+		onWatcherDisconnected: defaultOnWatcherDisconnected,
+		onWatcherConnected: defaultOnWatcherConnected,
+		onWatcherError: defaultOnWatcherError,
 		...opt,
 	}
 	debug('options', opt)
@@ -35,7 +55,11 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		etcdPrefix,
 		pathToPgbouncerIni,
 		pathToUserlistTxt,
+		onGenerationFailed,
 		onConfigWritten,
+		onWatcherDisconnected,
+		onWatcherConnected,
+		onWatcherError,
 	} = opt
 
 	const _etcd = await connectToEtcd()
@@ -43,12 +67,28 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 
 	let previousPgbouncerIni = null
 	let previousUserlistTxt = null
-	const generateConfig = async () => {
+	const generateConfig = async (reportGenFailed = true) => {
 		debug('regenerating config')
-		const etcdEntries = await etcd.getAll().strings()
-		debug('etcd entries', etcdEntries)
-		const pgbouncerIni = mapEtcdEntriesToPgbouncerIni(etcdEntries)
-		const userlistTxt = mapEtcdEntriesToUserlistTxt(etcdEntries)
+		let etcdEntries = null
+		let pgbouncerIni = null
+		let userlistTxt = null
+		try {
+			etcdEntries = await etcd.getAll().strings()
+			debug('etcd entries', etcdEntries)
+
+			pgbouncerIni = mapEtcdEntriesToPgbouncerIni(etcdEntries)
+			userlistTxt = mapEtcdEntriesToUserlistTxt(etcdEntries)
+		} catch (err) {
+			if (reportGenFailed && (err instanceof GenerationError)) {
+				const ev = {
+					error: err,
+					etcdEntries,
+				}
+				onGenerationFailed(ev)
+				return;
+			}
+			throw err
+		}
 
 		const _write = opt.writeAtomically ? writeAtomically : fsWriteFile
 		const writeTasks = []
@@ -69,9 +109,50 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		onConfigWritten(ev)
 	}
 
-	await generateConfig()
+	await generateConfig(false)
+
+	if (opt.watch) {
+		// Note: `.prefix('')` is necessary for it to work.
+		const watcher = await etcd.watch().prefix('').create()
+		watcher.on('disconnected', () => {
+			debugWatcher('disconnected')
+			onWatcherDisconnected()
+		})
+		watcher.on('connected', (_) => {
+			debugWatcher('connected')
+			onWatcherConnected()
+		})
+		watcher.on('error', (err) => {
+			debugWatcher('error', err)
+			onWatcherError({
+				error: err,
+			})
+		})
+
+		await new Promise((_, reject) => {
+			const gen = () => {
+				// todo: this doesn't take promise resolution settling time into account – use p-debounce instead?
+				generateConfig()
+				.catch(reject)
+			}
+			
+			watcher.on('put', ({key, value: val}) => {
+				if (debugWatcher.enabled) {
+					debugWatcher('watch: put', key.toString(), val.toString())
+				}
+				gen()
+			})
+			watcher.on('delete', ({key}) => {
+				if (debugWatcher.enabled) {
+					debugWatcher('watch: delete', key.toString())
+				}
+				gen()
+			})
+		})
+	}
 }
 
 export {
 	generatePgbouncerConfigFromEtc,
+	GenerationError,
 }
