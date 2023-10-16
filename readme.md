@@ -19,7 +19,10 @@ npm install -g pgbouncer-etcd-adapter
 ## Usage
 
 ```
-todo
+Usage:
+    configure-pgbouncer-using-etcd
+Examples:
+    configure-pgbouncer-using-etcd
 ```
 
 

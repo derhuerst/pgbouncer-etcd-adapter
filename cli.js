@@ -38,5 +38,6 @@ if (flags.version) {
 	process.exit(0)
 }
 
+import {generatePgbouncerConfigFromEtc} from './index.js'
 
-// todo
+await generatePgbouncerConfigFromEtc()
