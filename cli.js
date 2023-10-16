@@ -68,6 +68,11 @@ Options:
                                        2) moving this temp file to the target path,
                                       *do not* write atomically.
                                       Default: false
+    -d  --debounce                  With bursts of changes coming from etcds, the time to
+                                      delay regeneration of the config for, at most, in
+                                      milliseconds. Pass 0 to regenerate on every change
+                                      immediately.
+                                      Default: 200
 Examples:
     configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
@@ -125,6 +130,15 @@ if (!flags.quiet) {
 		]
 		console.info(filesWritten.join(' & ') + ' written')
 	}
+}
+
+if ('debounce' in flags) {
+	const ms = parseInt(flags.debounce)
+	if (Number.isInteger(ms) || ms < 0) {
+		console.error('Invalid --debounce value.')
+		process.exit(1)
+	}
+	opt.debounce = ms
 }
 
 try {

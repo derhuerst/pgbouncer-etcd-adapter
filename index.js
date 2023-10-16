@@ -1,6 +1,7 @@
 import createDebug from 'debug'
 import writeAtomically from 'write-file-atomic'
 import {writeFile as fsWriteFile} from 'node:fs/promises'
+import debounce from 'lodash.debounce'
 import {connectToEtcd} from './lib/etcd.js'
 import {
 	mapEtcdEntriesToPgbouncerIni,
@@ -41,6 +42,8 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		etcdPrefix: 'pgbouncer.',
 		writeAtomically: true,
 		watch: false,
+		// delay generation to handle bursts of etcd writes, 0 to disable
+		debounce: 200,
 		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
 		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
 		onGenerationFailed: defaultOnGenerationFailed,
@@ -130,11 +133,14 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		})
 
 		await new Promise((_, reject) => {
-			const gen = () => {
+			const _gen = () => {
 				// todo: this doesn't take promise resolution settling time into account – use p-debounce instead?
 				generateConfig()
 				.catch(reject)
 			}
+			const gen = opt.debounce !== 0
+				? debounce(_gen, opt.debounce)
+				: _gen
 			
 			watcher.on('put', ({key, value: val}) => {
 				if (debugWatcher.enabled) {
