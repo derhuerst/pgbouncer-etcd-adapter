@@ -28,6 +28,9 @@ Options:
                                       Default: $PWD/pgbouncer.ini
     -u  --path-to-userlist-txt      Where pgbouncer's userlist.txt shall be written to.
                                       Default: $PWD/pgbouncer.ini
+    -q  --quiet                     Do not print a message to stdout whenever pgbouncer's
+                                      config has been modified.
+                                      Default: false
         --no-atomic-writes          Instead of writing atomically by
                                        1) writing into a temporary file and
                                        2) moving this temp file to the target path,

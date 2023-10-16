@@ -27,6 +27,7 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		writeAtomically: true,
 		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
 		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
+		onConfigWritten: () => {},
 		...opt,
 	}
 	debug('options', opt)
@@ -34,11 +35,14 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		etcdPrefix,
 		pathToPgbouncerIni,
 		pathToUserlistTxt,
+		onConfigWritten,
 	} = opt
 
 	const _etcd = await connectToEtcd()
 	const etcd = _etcd.namespace(etcdPrefix)
 
+	let previousPgbouncerIni = null
+	let previousUserlistTxt = null
 	const generateConfig = async () => {
 		debug('regenerating config')
 		const etcdEntries = await etcd.getAll().strings()
@@ -47,10 +51,22 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		const userlistTxt = mapEtcdEntriesToUserlistTxt(etcdEntries)
 
 		const _write = opt.writeAtomically ? writeAtomically : fsWriteFile
-		await Promise.all([
-			writeFileAndLog(_write, pathToPgbouncerIni, pgbouncerIni),
-			writeFileAndLog(_write, pathToUserlistTxt, userlistTxt),
-		])
+		const writeTasks = []
+		const pgbouncerIniHasChanged = pgbouncerIni !== previousPgbouncerIni
+		if (pgbouncerIniHasChanged) {
+			writeTasks.push(writeFileAndLog(_write, pathToPgbouncerIni, pgbouncerIni))
+		}
+		const userlistTxtHasChanged = userlistTxt !== previousUserlistTxt
+		if (userlistTxtHasChanged) {
+			writeTasks.push(writeFileAndLog(_write, pathToUserlistTxt, userlistTxt))
+		}
+		await Promise.all(writeTasks)
+
+		const ev = {
+			pgbouncerIniWritten: pgbouncerIniHasChanged,
+			userlistTxtWritten: userlistTxtHasChanged,
+		}
+		onConfigWritten(ev)
 	}
 
 	await generateConfig()

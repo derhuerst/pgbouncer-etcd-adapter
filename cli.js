@@ -35,6 +35,10 @@ const {
 			type: 'string',
 			short: 'u',
 		},
+		quiet: {
+			type: 'boolean',
+			short: 'q',
+		},
 	},
 })
 
@@ -49,6 +53,9 @@ Options:
                                       Default: $PWD/pgbouncer.ini
     -u  --path-to-userlist-txt      Where pgbouncer's userlist.txt shall be written to.
                                       Default: $PWD/pgbouncer.ini
+    -q  --quiet                     Do not print a message to stdout whenever pgbouncer's
+                                      config has been modified.
+                                      Default: false
         --no-atomic-writes          Instead of writing atomically by
                                        1) writing into a temporary file and
                                        2) moving this temp file to the target path,
@@ -84,6 +91,16 @@ if ('path-to-pgbouncer-ini' in flags) {
 
 if ('path-to-userlist-txt' in flags) {
 	opt.pathToUserlistTxt = flags['path-to-userlist-txt']
+}
+
+if (!flags.quiet) {
+	opt.onConfigWritten = ({pgbouncerIniWritten, userlistTxtWritten}) => {
+		const filesWritten = [
+			...(pgbouncerIniWritten ? ['pgbouncer.ini'] : []),
+			...(userlistTxtWritten ? ['userlist.txt'] : []),
+		]
+		console.info(filesWritten.join(' & ') + ' written')
+	}
 }
 
 await generatePgbouncerConfigFromEtc(opt)
