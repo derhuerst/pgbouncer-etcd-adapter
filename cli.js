@@ -43,6 +43,9 @@ const {
 			type: 'boolean',
 			short: 'q',
 		},
+		'listen-for-sigusr1': {
+			type: 'boolean',
+		},
 	},
 })
 
@@ -73,6 +76,9 @@ Options:
                                       milliseconds. Pass 0 to regenerate on every change
                                       immediately.
                                       Default: 200
+        --listen-for-sigusr1        Reconfigure pgbouncer when the process receives a
+                                      SIGUSR1 signal.
+                                      Default: false
 Examples:
     configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
@@ -141,12 +147,29 @@ if ('debounce' in flags) {
 	opt.debounce = ms
 }
 
-try {
-	await generatePgbouncerConfigFromEtc(opt)
-} catch (error) {
+const handleError = (error) => {
 	if (error instanceof GenerationError) {
 		onGenerationFailed({error})
 	} else {
 		throw error
 	}
+}
+
+let generator = null
+try {
+	generator = await generatePgbouncerConfigFromEtc(opt)
+} catch (error) {
+	handleError(error)
+}
+
+if (flags['listen-for-sigusr1']) {
+	// Begin reading from stdin so the process does not exit.
+	process.stdin.resume()
+
+	// > 'SIGUSR1' is reserved by Node.js to start the debugger. It's possible to install a listener but doing so might interfere with the debugger.
+	// https://nodejs.org/docs/latest-v20.x/api/process.html#signal-events
+	process.on('SIGUSR1', () => {
+		generator.generate()
+		.catch(handleError)
+	})
 }

@@ -44,6 +44,9 @@ Options:
                                       milliseconds. Pass 0 to regenerate on every change
                                       immediately.
                                       Default: 200
+        --listen-for-sigusr1        Reconfigure pgbouncer when the process receives a
+                                      SIGUSR1 signal.
+                                      Default: false
 Examples:
     configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes

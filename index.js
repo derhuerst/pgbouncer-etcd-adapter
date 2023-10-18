@@ -156,6 +156,11 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 			})
 		})
 	}
+
+	const generator = {
+		generate: generateConfig,
+	}
+	return generator
 }
 
 export {
