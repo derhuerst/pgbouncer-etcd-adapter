@@ -14,7 +14,9 @@ const ETCD_STATE_1 = Object.freeze({
 	'foo': 'bar',
 	'users.alice': 'pool_mode=statement',
 	'users.bob': 'pool_mode=transaction',
-	'databases.db1': 'host=db1 user=hello password=world',
+	'databases.db1.host': 'db1',
+	'databases.db1.user': 'hello',
+	'databases.db1.password': 'world',
 	'userlist.alice': 'password',
 	'userlist.bob': 'some"password',
 })
@@ -33,7 +35,11 @@ test('parseEtcdEntries works', (t) => {
 				bob: 'pool_mode=transaction',
 			},
 			databases: {
-				db1: 'host=db1 user=hello password=world',
+				db1: {
+					host: 'db1',
+					user: 'hello',
+					password: 'world',
+				},
 			},
 		},
 		'userlist.txt': {
@@ -41,6 +47,27 @@ test('parseEtcdEntries works', (t) => {
 			bob: 'some"password',
 		},
 	})
+})
+
+test('mapEtcdEntriesToPgbouncerIni works', (t) => {
+	const pgbouncerIni = mapEtcdEntriesToPgbouncerIni(ETCD_STATE_1)
+
+	console.error(pgbouncerIni)
+	strictEqual(pgbouncerIni, `\
+[pgbouncer]
+
+foo=bar
+
+[users]
+
+alice=pool_mode=statement
+bob=pool_mode=transaction
+
+[databases]
+
+db1=host=db1 user=hello password=world
+
+`)
 })
 
 test('mapEtcdEntriesToUserlistTxt works', (t) => {
