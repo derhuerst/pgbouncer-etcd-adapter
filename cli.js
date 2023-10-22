@@ -46,6 +46,9 @@ const {
 		'listen-for-sigusr1': {
 			type: 'boolean',
 		},
+		'no-pgbouncer-reload': {
+			type: 'boolean',
+		},
 	},
 })
 
@@ -79,6 +82,18 @@ Options:
         --listen-for-sigusr1        Reconfigure pgbouncer when the process receives a
                                       SIGUSR1 signal.
                                       Default: false
+        --no-pgbouncer-reload       Once the config has been regenerated, *do not* tell
+                                      pgbouncer to
+                                      1. reload the config (using \`RELOAD\`)
+                                      2. reestablish all connections to DBs & clients
+                                         using \`SUSPEND; RESUME\`
+                                      Default: false
+Notes:
+    Unless --no-pgbouncer-reload is passed, this tool will connect to pgbouncer's
+    special \`pgbouncer\` "admin console" DB that allows controlling it via SQL. [1]
+    It will respect up the libpg environment variables [2].
+    [1] https://www.pgbouncer.org/usage.html#admin-console
+    [2] https://www.postgresql.org/docs/16/libpq-envars.html
 Examples:
     configure-pgbouncer-using-etcd -c /etc/pgbouncer/pgbouncer.ini --watch
     configure-pgbouncer-using-etcd --etcd-prefix pgb --no-atomic-writes
@@ -136,6 +151,9 @@ if (!flags.quiet) {
 		]
 		console.info(filesWritten.join(' & ') + ' written')
 	}
+	opt.onPgbouncerReloaded = () => {
+		console.info('pgbouncer reloaded')
+	}
 }
 
 if ('debounce' in flags) {
@@ -145,6 +163,10 @@ if ('debounce' in flags) {
 		process.exit(1)
 	}
 	opt.debounce = ms
+}
+
+if ('no-pgbouncer-reload' in flags) {
+	opt.reloadPgbouncer = !flags['no-pgbouncer-reload']
 }
 
 const handleError = (error) => {

@@ -3,9 +3,9 @@ import {
 	deepStrictEqual,
 	strictEqual,
 } from 'node:assert'
-import { inspect } from 'node:util' // todo: remove
 import {
 	parseEtcdEntries,
+	mapEtcdEntriesToDbs,
 	mapEtcdEntriesToPgbouncerIni,
 	mapEtcdEntriesToUserlistTxt,
 } from '../lib/map.js'
@@ -23,7 +23,6 @@ const ETCD_STATE_1 = Object.freeze({
 
 test('parseEtcdEntries works', (t) => {
 	const data = parseEtcdEntries(ETCD_STATE_1)
-	console.error('data', inspect(data, {depth: null}))
 
 	deepStrictEqual(data, {
 		'pgbouncer.ini': {
@@ -49,10 +48,17 @@ test('parseEtcdEntries works', (t) => {
 	})
 })
 
+test('mapEtcdEntriesToDbs works', (t) => {
+	const dbs = mapEtcdEntriesToDbs(ETCD_STATE_1)
+
+	deepStrictEqual(dbs, [
+		['db1', {host: 'db1', user: 'hello', password: 'world'}],
+	])
+})
+
 test('mapEtcdEntriesToPgbouncerIni works', (t) => {
 	const pgbouncerIni = mapEtcdEntriesToPgbouncerIni(ETCD_STATE_1)
 
-	console.error(pgbouncerIni)
 	strictEqual(pgbouncerIni, `\
 [pgbouncer]
 

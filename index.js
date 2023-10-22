@@ -4,10 +4,12 @@ import {writeFile as fsWriteFile} from 'node:fs/promises'
 import debounce from 'lodash.debounce'
 import {connectToEtcd} from './lib/etcd.js'
 import {
+	mapEtcdEntriesToDbs,
 	mapEtcdEntriesToPgbouncerIni,
 	mapEtcdEntriesToUserlistTxt,
 } from './lib/map.js'
 import {GenerationError} from './lib/generation-error.js'
+import {connectToPgbouncer} from './lib/reload-pg.js'
 
 const LINUX_DEFAULT_CONFIG_BASE_DIR = '/etc/pgbouncer'
 
@@ -46,8 +48,10 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		debounce: 200,
 		pathToPgbouncerIni: LINUX_DEFAULT_CONFIG_BASE_DIR + '/pgbouncer.ini',
 		pathToUserlistTxt: LINUX_DEFAULT_CONFIG_BASE_DIR + '/userlist.txt',
+		reloadPgbouncer: true,
 		onGenerationFailed: defaultOnGenerationFailed,
 		onConfigWritten: () => {},
+		onPgbouncerReloaded: () => {},
 		onWatcherDisconnected: defaultOnWatcherDisconnected,
 		onWatcherConnected: defaultOnWatcherConnected,
 		onWatcherError: defaultOnWatcherError,
@@ -60,6 +64,7 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		pathToUserlistTxt,
 		onGenerationFailed,
 		onConfigWritten,
+		onPgbouncerReloaded,
 		onWatcherDisconnected,
 		onWatcherConnected,
 		onWatcherError,
@@ -68,17 +73,29 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 	const _etcd = await connectToEtcd()
 	const etcd = _etcd.namespace(etcdPrefix)
 
+	const {
+		reloadPgbouncerViaSql,
+	} = opt.reloadPgbouncer
+		? await connectToPgbouncer({
+			onPgbouncerReloaded,
+		})
+		: {
+			reloadPgbouncerViaSql: () => {},
+		}
+
 	let previousPgbouncerIni = null
 	let previousUserlistTxt = null
 	const generateConfig = async (reportGenFailed = true) => {
 		debug('regenerating config')
 		let etcdEntries = null
+		let dbs = null
 		let pgbouncerIni = null
 		let userlistTxt = null
 		try {
 			etcdEntries = await etcd.getAll().strings()
 			debug('etcd entries', etcdEntries)
 
+			dbs = mapEtcdEntriesToDbs(etcdEntries)
 			pgbouncerIni = mapEtcdEntriesToPgbouncerIni(etcdEntries)
 			userlistTxt = mapEtcdEntriesToUserlistTxt(etcdEntries)
 		} catch (err) {
@@ -110,6 +127,8 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 			userlistTxtWritten: userlistTxtHasChanged,
 		}
 		onConfigWritten(ev)
+
+		await reloadPgbouncerViaSql(dbs)
 	}
 
 	await generateConfig(false)
