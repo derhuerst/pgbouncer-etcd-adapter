@@ -114,10 +114,12 @@ const generatePgbouncerConfigFromEtc = async (opt = {}) => {
 		const writeTasks = []
 		const pgbouncerIniHasChanged = pgbouncerIni !== previousPgbouncerIni
 		if (pgbouncerIniHasChanged) {
+			debug('pgbouncer.ini has changed')
 			writeTasks.push(writeFileAndLog(_write, pathToPgbouncerIni, pgbouncerIni))
 		}
 		const userlistTxtHasChanged = userlistTxt !== previousUserlistTxt
 		if (userlistTxtHasChanged) {
+			debug('userlist.txt has changed')
 			writeTasks.push(writeFileAndLog(_write, pathToUserlistTxt, userlistTxt))
 		}
 		await Promise.all(writeTasks)
