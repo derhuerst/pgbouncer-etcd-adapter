@@ -116,58 +116,75 @@ test('works end-to-end', async (t) => {
 
 	const etcdClient = new Etcd3()
 
-	await Promise.all([
-		(async () => {
-			try {
-				await etcd
-			} catch (err) {
-				if (err.command == 'etcd' && err.signal === 'SIGTERM') {
-					return;
+	try {
+		await Promise.all([
+			(async () => {
+				try {
+					await etcd
+				} catch (err) {
+					if (err.command == 'etcd' && err.signal === 'SIGTERM') {
+						return;
+					}
+					throw err
 				}
-				throw err
-			}
-		})(),
-		(async () => {
-			// wait for etcd to start up
-			await new Promise(r => setTimeout(r, 500))
+			})(),
+			(async () => {
+				try {
+					// wait for etcd to start up
+					await new Promise(r => setTimeout(r, 500))
 
-			etcdClient.stm().transact(async (tx) => {
-				await Promise.all([
-					tx.put(NS + 'logfile').value('/tmp/pgbouncer.log'),
-					tx.put('foo').value('bar'),
-					tx.put(NS + 'users.alice').value('pool_mode=statement'),
-					tx.put(NS + 'users.bob').value('pool_mode=transaction'),
-					tx.put(NS + 'databases.db1.host').value('db1'),
-					tx.put(NS + 'databases.db1.user').value('hello'),
-					tx.put(NS + 'databases.db1.password').value('world'),
-					tx.put(NS + 'userlist.alice').value('password'),
-					tx.put(NS + 'userlist.bob').value('some"password'),
-				])
-			})
+					await etcdClient.stm().transact(async (tx) => {
+						await Promise.all([
+							tx.put(NS + 'logfile').value('/tmp/pgbouncer.log'),
+							tx.put('foo').value('bar'),
+							tx.put(NS + 'users.alice').value('pool_mode=statement'),
+							tx.put(NS + 'users.bob').value('pool_mode=transaction'),
+							tx.put(NS + 'databases.db1.host').value('db1'),
+							tx.put(NS + 'databases.db1.user').value('hello'),
+							tx.put(NS + 'databases.db1.password').value('world'),
+							tx.put(NS + 'userlist.alice').value('password'),
+							tx.put(NS + 'userlist.bob').value('some"password'),
+						])
+					})
 
-			await execa(pathToAdapter, [
-				'-p', NS,
-				'-c', pgbouncerIniPath,
-				'-u', userlistTxtPath,
-				'--no-pgbouncer-reload',
-				'--quiet',
-			], {
-				stdio: 'inherit',
-			})
+					await execa(pathToAdapter, [
+						'-p', NS,
+						'-c', pgbouncerIniPath,
+						'-u', userlistTxtPath,
+						'--no-pgbouncer-reload',
+						'--quiet',
+					], {
+						stdio: 'inherit',
+						env: {
+							'ETCD_ADDR': 'http://localhost:12379',
+						},
+					})
 
-			// todo: this is needed, why? – it shouldn't
-			await new Promise(r => setTimeout(r, 500))
+					// todo: this is needed, why? – it shouldn't
+					await new Promise(r => setTimeout(r, 500))
 
-			const [
-				pgbouncerIni,
-				userlistTxt,
-			] = await Promise.all([
-				readFile(pgbouncerIniPath, {encoding: 'utf8'}),
-				readFile(userlistTxtPath, {encoding: 'utf8'}),
-			])
 
-			// Note that we except the sections to be sorted, unlike the etcd fields put above.
-			strictEqual(pgbouncerIni, `\
+					const [
+						pgbouncerIni,
+						userlistTxt,
+					] = await Promise.all([
+						readFile(pgbouncerIniPath, {encoding: 'utf8'}),
+						readFile(userlistTxtPath, {encoding: 'utf8'}),
+					])
+					debug({pgbouncerIni, userlistTxt})
+
+					await execa(pathToAdapter, [
+						'-p', NS,
+						'-c', pgbouncerIniPath,
+						'-u', userlistTxtPath,
+						'--no-pgbouncer-reload',
+						'--quiet',
+					], {
+						stdio: 'inherit',
+					})
+
+					// Note that we except the sections to be sorted, unlike the etcd fields put above.
+					strictEqual(pgbouncerIni, `\
 [pgbouncer]
 
 logfile=/tmp/pgbouncer.log
@@ -182,14 +199,21 @@ bob=pool_mode=transaction
 db1=host=db1 user=hello password=world
 
 `)
-			strictEqual(userlistTxt, `\
+					strictEqual(userlistTxt, `\
 "alice" "password"
 "bob" "some"password"
 `)
 
-			etcd.kill('SIGTERM', {forceKillAfterTimeout: 3000})
-		})(),
-	])
-
-	etcdClient.close()
+				} finally {
+					etcd.kill('SIGTERM', {forceKillAfterTimeout: 2000})
+				}
+			})(),
+		])
+	} finally {
+		debug('tearing down')
+		etcdClient.close()
+		if (!etcd.killed) {
+			etcd.kill('SIGTERM', {forceKillAfterTimeout: 2000})
+		}
+	}
 })

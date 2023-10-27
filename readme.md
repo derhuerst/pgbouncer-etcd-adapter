@@ -86,7 +86,7 @@ Then run pgbouncer. Because it contains *both* pgbouncer and the pgbouncer â†”ï¸
 ```shell
 docker run \
 	--name pgbouncer-via-etcd --rm -it \
-	--link etcd -e ETCD_ADDR="etcd://root:$ETCD_ROOT_PASSWORD@etcd:2379" \
+	--link etcd -e ETCD_ADDR="http://root:$ETCD_ROOT_PASSWORD@etcd:2379" \
 	-e PGBOUNCER_ADMIN_USER -e PGBOUNCER_ADMIN_PASSWORD \
 	ghcr.io/derhuerst/pgbouncer-with-etcd:1
 ```
