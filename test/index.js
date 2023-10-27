@@ -111,10 +111,20 @@ test('works end-to-end', async (t) => {
 	const etcd = execa('etcd', [], {
 		shell: true,
 		cwd: TMP,
+		env: {
+			// > List of URLs to listen on for client traffic.
+			'ETCD_LISTEN_CLIENT_URLS': 'http://localhost:12379',
+			// > --advertise-client-urls is required when --listen-client-urls is set explicitly
+			'ETCD_ADVERTISE_CLIENT_URLS': 'http://localhost:12379',
+			// > List of URLs to listen on for peer traffic.
+			'ETCD_LISTEN_PEER_URLS': 'http://localhost:12380',
+		},
 		// todo: stdio?
 	})
 
-	const etcdClient = new Etcd3()
+	const etcdClient = new Etcd3({
+		hosts: ['localhost:12379'],
+	})
 
 	try {
 		await Promise.all([
@@ -181,6 +191,9 @@ test('works end-to-end', async (t) => {
 						'--quiet',
 					], {
 						stdio: 'inherit',
+						env: {
+							'ETCD_ADDR': 'http://localhost:12379',
+						},
 					})
 
 					// Note that we except the sections to be sorted, unlike the etcd fields put above.
