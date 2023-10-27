@@ -1,0 +1,46 @@
+name: build & upload binaries
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  test:
+    name: run tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18']
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+    - name: setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm install
+
+    - run: npm run lint
+    - run : npm test
+
+  docker-image:
+    name: build & publish Docker image
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: use Docker buildx
+      uses: docker/setup-buildx-action@v3
+    - name: build Docker image & push to Docker Hub
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}:latest
+          ghcr.io/${{ github.repository }}:1
+        # https://github.com/docker/build-push-action/blob/9472e9021074a3cb3279ba431598b8836d40433f/docs/advanced/cache.md#github-cache
+        # https://github.com/moby/buildkit#registry-push-image-and-cache-separately
+        cache-from: type=gha
+        cache-to: type=gha,mode=max,oci-mediatypes=true,compression=zstd

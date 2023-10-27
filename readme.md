@@ -81,14 +81,14 @@ export ETCD_ROOT_PASSWORD=…
 docker run -d --name etcd --rm -p 2379:2379 -e ETCD_ROOT_PASSWORD bitnami/etcd:3.5
 ```
 
-Then run pgbouncer. Because it contains *both* pgbouncer and the pgbouncer ↔︎ etcd adapter, the Docker image is *not* called `derhuerst/pgbouncer-etcd-adapter` but `derhuerst/pgbouncer-via-etcd`. Configure access to etcd using `$ETCD_ADDR`.
+Then run pgbouncer. Because it contains *both* pgbouncer and the pgbouncer ↔︎ etcd adapter, the Docker image is *not* called `ghcr.io/derhuerst/pgbouncer-etcd-adapter` but `ghcr.io/derhuerst/pgbouncer-via-etcd`. Configure access to etcd using `$ETCD_ADDR`.
 
 ```shell
 docker run \
 	--name pgbouncer-via-etcd --rm -it \
 	--link etcd -e ETCD_ADDR="etcd://root:$ETCD_ROOT_PASSWORD@etcd:2379" \
 	-e PGBOUNCER_ADMIN_USER -e PGBOUNCER_ADMIN_PASSWORD \
-	derhuerst/pgbouncer-with-etcd:1
+	ghcr.io/derhuerst/pgbouncer-with-etcd:1
 ```
 
 *Note:* If you don't set `pgbouncer.userlist.$PGBOUNCER_ADMIN_USER` to `$PGBOUNCER_ADMIN_PASSWORD`, the container will immediately regenerate `userlist` without an entry for `$PGBOUNCER_ADMIN_USER`, so that the container's health check will fail.
