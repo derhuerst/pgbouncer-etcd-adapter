@@ -21,7 +21,8 @@ RUN \
 RUN install_packages \
 	nodejs \
 	npm \
-	pgbouncer
+	pgbouncer \
+	postgresql-client
 
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"
@@ -43,6 +44,10 @@ ENV PGBOUNCER_ADMIN_PASSWORD=password
 COPY . /pgbouncer
 
 EXPOSE 6432
+
+HEALTHCHECK \
+	--interval=3s --timeout=3s --start-period=2s --retries=10 \
+	CMD /bin/sh -c 'PGPASSWORD="$PGBOUNCER_ADMIN_PASSWORD" psql -q -t -p 6432 pgbouncer -U "$PGBOUNCER_ADMIN_USER" -c "SHOW DATABASES" >/dev/null'
 
 ENTRYPOINT ["/pgbouncer/docker-entrypoint.sh"]
 CMD []

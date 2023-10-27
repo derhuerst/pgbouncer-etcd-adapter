@@ -35,6 +35,18 @@ sed -i -r "s/^;admin_users = .+/admin_users = $PGBOUNCER_ADMIN_USER/" /etc/pgbou
 
 pgbouncer "${flags[@]}" &
 
+# wait for pgbouncer to start up
+sleep 1s
+it=1
+until env PGPASSWORD="$PGBOUNCER_ADMIN_PASSWORD" timeout -k 0.1s 1s psql -q -t -p 6432 -d pgbouncer -U "$PGBOUNCER_ADMIN_USER" -c 'SHOW DATABASES' >/dev/null; do
+	((it=it+1))
+	if [ $it -gt 5 ]; then
+		1>&2 echo 'pgbouncer health check failed too often'
+		exit 1
+	fi
+	sleep 1s;
+done
+
 env \
 	PGUSER="$PGBOUNCER_ADMIN_USER" \
 	PGPASSWORD="$PGBOUNCER_ADMIN_PASSWORD" \
